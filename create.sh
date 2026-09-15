@@ -101,7 +101,7 @@ select_server() {
     # prints numbered list, sets SELECTED_SERVER
     mapfile -t servers < <(list_servers)
     if [ ${#servers[@]} -eq 0 ]; then
-        echo -e "${RED}Koi bhi server nahi mila! Pehle 'Create New Server' use karo.${NC}"
+        echo -e "${RED}No servers found! Use 'Create New Server' first.${NC}"
         SELECTED_SERVER=""
         return 1
     fi
@@ -112,9 +112,9 @@ select_server() {
         i=$((i+1))
     done
     echo ""
-    read -rp "$(echo -e "${CYAN}Server number chuno: ${NC}")" idx
+    read -rp "$(echo -e "${CYAN}Choose a server number: ${NC}")" idx
     if ! [[ "$idx" =~ ^[0-9]+$ ]] || [ "$idx" -lt 1 ] || [ "$idx" -gt ${#servers[@]} ]; then
-        echo -e "${RED}Galat choice!${NC}"
+        echo -e "${RED}Invalid choice!${NC}"
         SELECTED_SERVER=""
         return 1
     fi
@@ -130,7 +130,7 @@ create_server() {
     read -rp "$(echo -e "${CYAN}Server Name: ${NC}")" server_name
 
     if [ -z "$server_name" ]; then
-        echo -e "${RED}Server name khali nahi ho sakta!${NC}"
+        echo -e "${RED}Server name cannot be empty!${NC}"
         pause
         return
     fi
@@ -146,16 +146,16 @@ create_server() {
     target_dir="$SERVERS_DIR/$safe_name"
 
     if [ -d "$target_dir" ]; then
-        echo -e "${RED}Is naam ka server pehle se maujood hai!${NC}"
+        echo -e "${RED}A server with this name already exists!${NC}"
         pause
         return
     fi
 
     mkdir -p "$target_dir"
-    cd "$target_dir" || { echo -e "${RED}Folder mein enter nahi ho paya!${NC}"; pause; return; }
+    cd "$target_dir" || { echo -e "${RED}Could not enter the folder!${NC}"; pause; return; }
 
     echo ""
-    echo -e "${YELLOW}Minecraft Version chuno:${NC}"
+    echo -e "${YELLOW}Choose Minecraft Version:${NC}"
     echo -e "  ${GREEN}1)${NC} 1.21.11  (Latest)"
     echo -e "  ${GREEN}2)${NC} 1.21.5"
     echo -e "  ${GREEN}3)${NC} 1.21.1"
@@ -170,7 +170,7 @@ create_server() {
         3) ver="1.21.1" ;;
         4) ver="1.21" ;;
         5) ver="1.20" ;;
-        *) echo -e "${RED}Galat choice, default 1.21.11 use ho raha hai.${NC}"; ver="1.21.11" ;;
+        *) echo -e "${RED}Invalid choice, defaulting to 1.21.11.${NC}"; ver="1.21.11" ;;
     esac
 
     jar_url="${VERSION_URLS[$ver]}"
@@ -184,7 +184,7 @@ create_server() {
     fi
 
     if [ ! -s server.jar ]; then
-        echo -e "${RED}Download fail ho gaya! Internet check karo.${NC}"
+        echo -e "${RED}Download failed! Check your internet connection.${NC}"
         pause
         return
     fi
@@ -193,7 +193,7 @@ create_server() {
 
     # RAM settings
     echo ""
-    read -rp "$(echo -e "${CYAN}Max RAM dena hai (default ${DEFAULT_RAM}, e.g. 2G/4G): ${NC}")" ram_input
+    read -rp "$(echo -e "${CYAN}Max RAM to allocate (default ${DEFAULT_RAM}, e.g. 2G/4G): ${NC}")" ram_input
     ram_input=${ram_input:-$DEFAULT_RAM}
 
     # eula.txt
@@ -250,7 +250,7 @@ start_server() {
 
     dir="$SERVERS_DIR/$SELECTED_SERVER"
     if [ ! -f "$dir/server.jar" ]; then
-        echo -e "${RED}server.jar nahi mila is server mein!${NC}"
+        echo -e "${RED}server.jar not found for this server!${NC}"
         pause
         return
     fi
@@ -264,7 +264,7 @@ EOS
         chmod +x "$dir/start.sh"
     fi
 
-    echo -e "${YELLOW}Starting '${SELECTED_SERVER}' ... (Server band karne ke liye CTRL+C ya 'stop' type karo)${NC}"
+    echo -e "${YELLOW}Starting '${SELECTED_SERVER}' ... (Press CTRL+C or type 'stop' to shut down the server)${NC}"
     echo ""
     ( cd "$dir" && bash start.sh )
     pause
@@ -279,12 +279,12 @@ delete_server() {
     [ -z "$SELECTED_SERVER" ] && { pause; return; }
 
     echo ""
-    read -rp "$(echo -e "${RED}Pakka '$SELECTED_SERVER' delete karna hai? Ye permanent hai! (yes/no): ${NC}")" confirm
+    read -rp "$(echo -e "${RED}Are you sure you want to delete '$SELECTED_SERVER'? This is permanent! (yes/no): ${NC}")" confirm
     if [ "$confirm" = "yes" ]; then
         rm -rf "${SERVERS_DIR:?}/${SELECTED_SERVER:?}"
-        echo -e "${GREEN}✔ Server '$SELECTED_SERVER' delete ho gaya.${NC}"
+        echo -e "${GREEN}✔ Server '$SELECTED_SERVER' has been deleted.${NC}"
     else
-        echo -e "${YELLOW}Delete cancel kar diya.${NC}"
+        echo -e "${YELLOW}Delete cancelled.${NC}"
     fi
     pause
 }
@@ -297,23 +297,23 @@ rename_server() {
     select_server || { pause; return; }
     [ -z "$SELECTED_SERVER" ] && { pause; return; }
 
-    read -rp "$(echo -e "${CYAN}Naya naam do: ${NC}")" new_name
+    read -rp "$(echo -e "${CYAN}Enter new name: ${NC}")" new_name
     new_safe=$(echo "$new_name" | tr -cd '[:alnum:]_-')
 
     if [ -z "$new_safe" ]; then
-        echo -e "${RED}Invalid naam!${NC}"
+        echo -e "${RED}Invalid name!${NC}"
         pause
         return
     fi
 
     if [ -d "$SERVERS_DIR/$new_safe" ]; then
-        echo -e "${RED}Is naam ka server pehle se maujood hai!${NC}"
+        echo -e "${RED}A server with this name already exists!${NC}"
         pause
         return
     fi
 
     mv "$SERVERS_DIR/$SELECTED_SERVER" "$SERVERS_DIR/$new_safe"
-    echo -e "${GREEN}✔ Server '$SELECTED_SERVER' ka naam badal kar '$new_safe' ho gaya.${NC}"
+    echo -e "${GREEN}✔ Server '$SELECTED_SERVER' has been renamed to '$new_safe'.${NC}"
     pause
 }
 
@@ -321,19 +321,19 @@ rename_server() {
 uninstall_server() {
     print_banner
     echo -e "${RED}==== Uninstall Server ====${NC}"
-    echo -e "${YELLOW}Ye option ek server ki saari files (world, plugins, jar, configs)${NC}"
-    echo -e "${YELLOW}completely remove kar dega - jaise wo kabhi bana hi nahi tha.${NC}"
+    echo -e "${YELLOW}This option will completely remove all files for a server${NC}"
+    echo -e "${YELLOW}(world, plugins, jar, configs) - as if it never existed.${NC}"
     echo ""
     select_server || { pause; return; }
     [ -z "$SELECTED_SERVER" ] && { pause; return; }
 
     echo ""
-    read -rp "$(echo -e "${RED}FINAL WARNING: '$SELECTED_SERVER' ko poori tarah uninstall karna hai? (UNINSTALL likho): ${NC}")" confirm
+    read -rp "$(echo -e "${RED}FINAL WARNING: Fully uninstall '$SELECTED_SERVER'? (type UNINSTALL): ${NC}")" confirm
     if [ "$confirm" = "UNINSTALL" ]; then
         rm -rf "${SERVERS_DIR:?}/${SELECTED_SERVER:?}"
-        echo -e "${GREEN}✔ Server '$SELECTED_SERVER' completely uninstall ho gaya.${NC}"
+        echo -e "${GREEN}✔ Server '$SELECTED_SERVER' has been completely uninstalled.${NC}"
     else
-        echo -e "${YELLOW}Uninstall cancel kar diya (exact 'UNINSTALL' word nahi mila).${NC}"
+        echo -e "${YELLOW}Uninstall cancelled (exact word 'UNINSTALL' not entered).${NC}"
     fi
     pause
 }
@@ -353,11 +353,11 @@ settings_menu() {
         read -rp "$(echo -e "${CYAN}Choice: ${NC}")" schoice
         case "$schoice" in
             1)
-                read -rp "$(echo -e "${CYAN}Naya Max RAM (e.g. 4G): ${NC}")" val
+                read -rp "$(echo -e "${CYAN}New Max RAM (e.g. 4G): ${NC}")" val
                 [ -n "$val" ] && DEFAULT_RAM="$val"
                 ;;
             2)
-                read -rp "$(echo -e "${CYAN}Naya Min RAM (e.g. 1G): ${NC}")" val
+                read -rp "$(echo -e "${CYAN}New Min RAM (e.g. 1G): ${NC}")" val
                 [ -n "$val" ] && DEFAULT_MIN_RAM="$val"
                 ;;
             3)
@@ -365,14 +365,14 @@ settings_menu() {
                 [ -n "$val" ] && AUTO_EULA="$val"
                 ;;
             4)
-                read -rp "$(echo -e "${CYAN}Naya servers directory path: ${NC}")" val
+                read -rp "$(echo -e "${CYAN}New servers directory path: ${NC}")" val
                 if [ -n "$val" ]; then
                     mkdir -p "$val"
                     SERVERS_DIR="$val"
                 fi
                 ;;
             5) break ;;
-            *) echo -e "${RED}Galat choice!${NC}"; sleep 1 ;;
+            *) echo -e "${RED}Invalid choice!${NC}"; sleep 1 ;;
         esac
         # save config after every change
         cat > "$CONFIG_FILE" <<EOF
@@ -396,7 +396,7 @@ main_menu() {
         echo -e "${WHITE}  6)${NC} Settings"
         echo -e "${WHITE}  7)${NC} Exit"
         echo -e "${WHITE}------------------------------------------------------------${NC}"
-        read -rp "$(echo -e "${CYAN}Apna choice daalo (1-7): ${NC}")" choice
+        read -rp "$(echo -e "${CYAN}Enter your choice (1-7): ${NC}")" choice
 
         case "$choice" in
             1) create_server ;;
@@ -406,11 +406,11 @@ main_menu() {
             5) uninstall_server ;;
             6) settings_menu ;;
             7)
-                echo -e "${GREEN}Dhanyavaad! HERON SERVER band ho raha hai...${NC}"
+                echo -e "${GREEN}Thank you! Shutting down HERON SERVER...${NC}"
                 exit 0
                 ;;
             *)
-                echo -e "${RED}Galat choice, dobara try karo!${NC}"
+                echo -e "${RED}Invalid choice, try again!${NC}"
                 sleep 1
                 ;;
         esac
@@ -419,7 +419,7 @@ main_menu() {
 
 # ------------------------- ENTRY POINT ---------------------------
 if ! command -v java >/dev/null 2>&1; then
-    echo -e "${RED}WARNING: Java installed nahi hai! Server run karne ke liye Java (17+) chahiye.${NC}"
+    echo -e "${RED}WARNING: Java is not installed! Java (17+) is required to run the server.${NC}"
     echo -e "${YELLOW}Install: sudo apt install openjdk-21-jre-headless -y${NC}"
     sleep 3
 fi
